@@ -1,21 +1,21 @@
 var tasks = {};
 
 var createTask = function(taskText, taskDate, taskList) {
-  // create elements that make up a task item
-  var taskLi = $("<li>").addClass("list-group-item");
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(taskDate);
-  var taskP = $("<p>")
-    .addClass("m-1")
-    .text(taskText);
+ // create elements that make up a task item
+ var taskLi = $("<li>").addClass("list-group-item");
 
-  // append span and p element to parent li
-  taskLi.append(taskSpan, taskP);
+ var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(taskDate);
 
+ var taskP = $("<p>").addClass("m-1").text(taskText);
 
-  // append to ul list on the page
-  $("#list-" + taskList).append(taskLi);
+ // append span and p element to parent li
+ taskLi.append(taskSpan, taskP);
+
+ // check due date
+ auditTask(taskLi);
+
+ // append to ul list on the page
+ $("#list-" + taskList).append(taskLi);
 };
 
 var loadTasks = function() {
@@ -60,6 +60,25 @@ $(".list-group").on("click", "p", function() {
 
 });
 
+var auditTask = function(taskEl) {
+  // get date from task element
+  var date = $(taskEl).find("span").text().trim();
+
+  // convert to moment object at 5:00pm
+  var time = moment(date, "L").set("hour", 17);
+
+  // remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+
+};
 // modal was triggered
 $("#task-form-modal").on("show.bs.modal", function() {
   // clear values
@@ -165,33 +184,19 @@ $(".list-group").on("click", "span", function() {
 
 // value of due date was changed
 $(".list-group").on("change", "input[type='text']", function() {
-  // get current text
-  var date = $(this)
-    .val()
-    .trim();
-
-  // get the parent ul's id attribute
-  var status = $(this)
-    .closest(".list-group")
-    .attr("id")
-    .replace("list-", "");
-
-  // get the task's position in the list of other li elements
-  var index = $(this)
-    .closest(".list-group-item")
-    .index();
-
-  // update task in array and re-save to localstorage
-  tasks[status][index].date = date;
-  saveTasks();
-
-  // recreate span element with bootstrap classes
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(date);
-
-  // replace input with span element
-  $(this).replaceWith(taskSpan);
+    var date = $(this).val();
+  
+    var status = $(this).closest(".list-group").attr("id").replace("list-", "");
+    var index = $(this).closest(".list-group-item").index();
+  
+    tasks[status][index].date = date;
+    saveTasks();
+  
+    var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(date);
+    $(this).replaceWith(taskSpan);
+  
+    // Pass task's <li> element into auditTask() to check new due date
+    auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 $(".card .list-group").sortable({
@@ -244,6 +249,7 @@ $(".card .list-group").sortable({
   }
 });
 
+
 $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
@@ -262,3 +268,4 @@ $("#trash").droppable({
 $("#modalDueDate").datepicker({
   minDate: 1
 });
+
